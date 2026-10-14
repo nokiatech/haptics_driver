@@ -2,17 +2,40 @@
 
 # Haptics Device Driver
 
-This repository provides the source code for the Haptics Device Driver. 
+This repository provides the source code for the Haptics Device Driver.
+
+It is based on the [WEART Low-Level C# SDK](https://github.com/WEARTHaptics/WEART-SDK-CSharp)
+version 2.0.1, which adds support for the TouchDIVER Pro alongside the
+TouchDIVER: six actuation points (thumb, index, middle, annular, pinky, palm),
+the WeartApp status messages, and per-thimble raw data from the Pro devices.
+
+The driver is built as a **netstandard2.1** class library so that it can be loaded
+by Unity as a managed plugin. 
 
 ## Prerequisites
 
 Ensure the following tools and frameworks are installed on your system:
 
 - Visual Studio 2022
-- CMake 3.13 or later
+- CMake 3.27 or later
 - .NET 9.0 SDK or compatible version
-- Download and Install [Weart Middleware](https://apps.microsoft.com/detail/9p4t2jgfqn5z?hl=en-US&gl=FI)
-- Launch the Middleware
+- The WeArt host application for your device (see below), installed and launched
+
+### WeArt host application per device
+
+The driver connects over TCP to a WeArt host application, not to the glove directly.
+Which application you need depends on the device, and only one can run at a time
+(both listen on the same port):
+
+| Device | Host application |
+|---|---|
+| TouchDIVER (G1) | [WeArt Middleware](https://apps.microsoft.com/detail/9p4t2jgfqn5z?hl=en-US&gl=FI) |
+| TouchDIVER Pro | [WeArt App](https://apps.microsoft.com/detail/9NF7NVV1LZ6F?hl=en-us&gl=FI) |
+
+The TouchDIVER Pro is **not** supported by the Middleware, and the original
+TouchDIVER (G1) is **not** supported by the WeArt App. Install and launch the one
+that matches the glove you are using before running the driver. The driver detects
+which host is running automatically — no configuration is needed.
 
 ## Cloning the Repository
 
@@ -51,21 +74,10 @@ In Visual Studio, you can build the project quickly using the shortcut `Ctrl + S
 
 ### 3. Additional Dependencies
 
-#### Adding Newtonsoft.Json
+`Newtonsoft.Json` 13.0.3 is the only dependency, and CMake now declares it as a
+package reference that MSBuild restores automatically. There is nothing to
+install through the NuGet GUI and no references to add by hand.
 
-1. Open the solution in Visual Studio.
-2. Right-click on the project (`Haptics_Device_Driver`) and select `Manage NuGet Packages...`.
-3. Search for `Newtonsoft.Json` in the NuGet package manager.
-4. Install the latest version of `Newtonsoft.Json`.
-
-#### Adding "System" Reference
-
-1. In Visual Studio, expand the `References` section under the `Haptics_Device_Driver` project.
-2. Right-click on `References` and select `Add Reference`.
-3. In the `.NET Assemblies` tab, search for `System`.
-4. Select `System` and click `OK`.
-
-These steps ensure that required dependencies are properly included.
 
 ### 4. Build the Solution (´Ctrl + Shift + B´)
 
@@ -92,10 +104,23 @@ Alternatively, you can delete the `build` folder manually.
 After building the project, the DLL file will be located in:
 
 ```
-../build/<Configuration>/Haptics_Device_Driver.dll
+build/<Configuration>/Haptics_Device_Driver.dll
 ```
 
 Replace `<Configuration>` with `Debug` or `Release`, depending on the build configuration you selected.
+
+### 7. Using the Driver from Unity
+
+Copy **only** `Haptics_Device_Driver.dll` into the Unity project's
+`Assets/Plugins/` folder.
+
+Do not copy `Newtonsoft.Json.dll` alongside it. Unity provides its own copy via the
+`com.unity.nuget.newtonsoft-json` package, and a second copy in `Assets/Plugins`
+loads the assembly twice and breaks the build. Make sure that package is listed in
+the project's `Packages/manifest.json`.
+
+The project's API Compatibility Level must be `.NET Framework` or `.NET Standard 2.1`
+(Project Settings → Player → Other Settings).
 
 ## Notes
 
@@ -103,12 +128,15 @@ Replace `<Configuration>` with `Debug` or `Release`, depending on the build conf
 - If you encounter issues, refer to the CMake and Visual Studio documentation for troubleshooting tips.
 
 ## License:
-Please see <a href="https://github.com/nokiatech/haptics_driver/blob/master/LICENSE.TXT"><strong>LICENSE.TXT</strong></a> file for the terms of use of the contents of this repository.
+Please see <a href="./LICENSE.TXT"><strong>LICENSE.TXT</strong></a> file for the terms of use of the contents of this repository.
 
-All the example media files (*.heic, *.png, *.jpg, *.gif) in this repository are under copyright © Nokia Technologies 2015-2025.
+Portions of this software are derived from the WEART Low-Level C# SDK, which is
+distributed under the MIT License. See <a href="./LICENSE-WEART.md"><strong>LICENSE-WEART.md</strong></a>.
+
+All the example media files (*.heic, *.png, *.jpg, *.gif) in this repository are under copyright © Nokia Technologies 2015-2026.
 
 For more information/questions/source code/commercial licensing related issues, please contact: <heif@nokia.com>
 
-### **Copyright (c) 2015-2025, Nokia Technologies Ltd.**
+### **Copyright (c) 2015-2026, Nokia Technologies Ltd.**
 ### **All rights reserved.**
 

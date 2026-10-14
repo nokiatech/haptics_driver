@@ -1,6 +1,6 @@
 /*
 
-* Copyright (c) 2025 Nokia Corporation and/or its subsidiary(-ies). All rights reserved.
+* Copyright (c) 2026 Nokia Corporation and/or its subsidiary(-ies). All rights reserved.
 
 *
 
@@ -14,6 +14,13 @@
 
 */
 
+/*
+* Based on the WEART Low-Level C# SDK v2.0.1 -- WEART - Thimble Tracking Object componet
+* Copyright (c) 2026 Weart S.r.l. Licensed under the MIT License; see LICENSE-WEART.md.
+* https://www.weart.it/
+*/
+
+using System;
 using WeArt.Core;
 using WeArt.Messages;
 
@@ -75,6 +82,7 @@ namespace WeArt.Components
             if (type != WeArtClient.MessageType.MessageReceived)
                 return;
 
+            //TD
             if (message is RawDataMessage rawDataMessage)
             {
                 if (rawDataMessage.HandSide != _handSide)
@@ -90,6 +98,31 @@ namespace WeArt.Components
                     default: return;
                 }
                 newSample.Timestamp = rawDataMessage.Timestamp;
+                LastSample = newSample;
+
+                DataReceived?.Invoke(newSample);
+            }
+            //TD PRO
+            else if (message is RawDataTouchDiverPro rawDataTDProMessage)
+            {
+                if (rawDataTDProMessage.HandSide != _handSide)
+                    return;
+
+                TrackingRawData newSample = new TrackingRawData();
+                TrackingRawDataG2 rawDataTDPro;
+                switch (ActuationPoint)
+                {
+                    case ActuationPoint.Thumb: rawDataTDPro = rawDataTDProMessage.Thumb; break;
+                    case ActuationPoint.Index: rawDataTDPro = rawDataTDProMessage.Index; break;
+                    case ActuationPoint.Middle: rawDataTDPro = rawDataTDProMessage.Middle; break;
+                    case ActuationPoint.Annular: rawDataTDPro = rawDataTDProMessage.Annular; break;
+                    case ActuationPoint.Pinky: rawDataTDPro = rawDataTDProMessage.Pinky; break;
+                    case ActuationPoint.Palm: rawDataTDPro = rawDataTDProMessage.Palm; break;
+                    default: return;
+                }
+                newSample.Timestamp = rawDataTDProMessage.Timestamp;
+                newSample.Gyroscope = rawDataTDPro.Gyroscope;
+                newSample.Accelerometer = rawDataTDPro.Accelerometer;
                 LastSample = newSample;
 
                 DataReceived?.Invoke(newSample);

@@ -1,6 +1,6 @@
 /*
 
-* Copyright (c) 2025 Nokia Corporation and/or its subsidiary(-ies). All rights reserved.
+* Copyright (c) 2026 Nokia Corporation and/or its subsidiary(-ies). All rights reserved.
 
 *
 
@@ -13,6 +13,13 @@
 * of this material requires the prior written consent of Nokia.
 
 */
+
+/*
+* Based on the WEART Low-Level C# SDK v2.0.1 -- WEART - Temperature component
+* Copyright (c) 2026 Weart S.r.l. Licensed under the MIT License; see LICENSE-WEART.md.
+* https://www.weart.it/
+*/
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,7 +54,7 @@ namespace WeArt.Core
         public float Value
         {
             get => _value;
-            set => _value = Math.Max(WeArtConstants.minTemperature, Math.Min(WeArtConstants.maxTemperature, value));
+            set => _value = Math.Clamp(value, WeArtConstants.minTemperature, WeArtConstants.maxTemperature);
         }
 
         /// <summary>
