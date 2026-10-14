@@ -1,7 +1,7 @@
           Weart Driver for Haptics research and standardization Source Code Limited Non-commercial License
                                                          Version 1.0
 
-                                        Copyright (c) 2025, Nokia Technologies Ltd
+                                        Copyright (c) 2026, Nokia Technologies Ltd
                                                     All rights reserved.
 
 By downloading this Software , you as the Licensee (“You”) accept and agree to be bound by the terms and conditions of this Weart Driver for Haptics research and standardization Source Code Non-commercial License (“License"). 

@@ -1,6 +1,6 @@
-﻿/*
+/*
 
-* Copyright (c) 2025 Nokia Corporation and/or its subsidiary(-ies). All rights reserved.
+* Copyright (c) 2026 Nokia Corporation and/or its subsidiary(-ies). All rights reserved.
 
 *
 
@@ -13,16 +13,23 @@
 * of this material requires the prior written consent of Nokia.
 
 */
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
+
+/*
+* Based on the WEART Low-Level C# SDK v2.0.1 -- WeArtMessageCustomSerializer
+* Copyright (c) 2026 Weart S.r.l. Licensed under the MIT License; see LICENSE-WEART.md.
+* https://www.weart.it/
+*/
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace WeArt.Messages
 {
@@ -51,8 +58,19 @@ namespace WeArt.Messages
             public string Type { get; set; }
 
             [JsonProperty(PropertyName = "data")]
-            public JToken Data { get; set; }
+            public JToken Data { get; set; }  // Can hold either DeviceStatus, MiddlewareStatusMessage, etc.
         }
+
+        /// <summary>
+        /// Settings used for the "data" payload: the middleware uses camelCase names and
+        /// omits absent values.
+        /// </summary>
+        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
+        {
+            ContractResolver = new DefaultContractResolver { NamingStrategy = new CamelCaseNamingStrategy() },
+            NullValueHandling = NullValueHandling.Ignore,
+            Formatting = Formatting.None,
+        };
 
         public override bool Serialize(IWeArtMessage message, out string data)
         {
@@ -93,22 +111,16 @@ namespace WeArt.Messages
 
         private string SerializeJsonMessage(ReflectionData reflectionData, WeArtJsonMessage jsonMessage)
         {
+            // Create JsonMessageTemplate with the appropriate data
             JsonMessageTemplate json = new JsonMessageTemplate
             {
                 Type = reflectionData.Id,
                 Timestamp = jsonMessage.Timestamp,
-                Data = JToken.FromObject(jsonMessage),
+                Data = JToken.FromObject(jsonMessage, JsonSerializer.Create(_jsonSettings))
             };
-            DefaultContractResolver jsonContract = new DefaultContractResolver
-            {
-                NamingStrategy = new CamelCaseNamingStrategy()
-            };
-            JsonSerializerSettings jsonSettings = new JsonSerializerSettings
-            {
-                ContractResolver = jsonContract,
-                Formatting = Formatting.None,
-            };
-            return JsonConvert.SerializeObject(json, jsonSettings);
+
+            // Serialize JsonMessageTemplate to JSON string
+            return JsonConvert.SerializeObject(json, _jsonSettings);
         }
 
         public override bool Deserialize(string data, out IWeArtMessage message)
@@ -171,15 +183,17 @@ namespace WeArt.Messages
                 ReflectionData reflectionData = ReflectionData.GetFrom(json.Type);
 
                 // Message without parameters
-                if (json.Data is null)
+                if (json.Data is null || json.Data.Type == JTokenType.Null)
                 {
                     var message = (WeArtJsonMessage)Activator.CreateInstance(reflectionData.Type);
                     message.Timestamp = json.Timestamp;
                     return message;
                 }
 
-                // Message with parameters
-                return (IWeArtMessage)json.Data.ToObject(reflectionData.Type) ?? null;
+                // Message with parameters. Newtonsoft matches property names
+                // case-insensitively by default.
+                return (IWeArtMessage)json.Data.ToObject(reflectionData.Type, JsonSerializer.Create(_jsonSettings));
+
             }
             catch (MessageTypeNotFound)
             {
@@ -269,19 +283,23 @@ namespace WeArt.Messages
         }
     }
 
-    public class MillisecondsEpochConverter : DateTimeConverterBase
+    public class MillisecondsEpochConverter : JsonConverter<DateTime>
     {
         private static readonly DateTime _epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override DateTime ReadJson(JsonReader reader, Type objectType, DateTime existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
-            writer.WriteRawValue(((long)((DateTime)value - _epoch).TotalMilliseconds).ToString());
+            if (reader.TokenType != JsonToken.Integer && reader.TokenType != JsonToken.Float)
+                throw new JsonException("Expected number token for Unix timestamp in milliseconds.");
+
+            long milliseconds = Convert.ToInt64(reader.Value, CultureInfo.InvariantCulture);
+            return _epoch.AddMilliseconds(milliseconds);
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, DateTime value, JsonSerializer serializer)
         {
-            if (reader.Value == null) { return null; }
-            return _epoch.AddMilliseconds((long)reader.Value);
+            long milliseconds = (long)(value - _epoch).TotalMilliseconds;
+            writer.WriteValue(milliseconds);
         }
     }
 }
